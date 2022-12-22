@@ -21,6 +21,7 @@ class PostStatusService < BaseService
   # @option [Doorkeeper::Application] :application
   # @option [String] :idempotency Optional idempotency key
   # @option [Boolean] :with_rate_limit
+  # @option [Boolean] :to_crossbell
   # @return [Status]
   def call(account, options = {})
     @account     = account
@@ -39,6 +40,10 @@ class PostStatusService < BaseService
       process_status!
       postprocess_status!
       bump_potential_friendship!
+
+      if to_crossbell
+        post_to_crossbell
+      end
     end
 
     redis.setex(idempotency_key, 3_600, @status.id) if idempotency_given?
@@ -193,6 +198,26 @@ class PostStatusService < BaseService
       options_hash[:scheduled_at]    = nil
       options_hash[:idempotency]     = nil
       options_hash[:with_rate_limit] = false
+    end
+  end
+
+  def to_crossbell
+    puts "[Crossbell] new toot arrived (To crossbell: #{ @options[:to_crossbell] })"
+    @options[:to_crossbell] && ENV['CROSSBELL_WEBHOOK']
+  end
+
+  def post_to_crossbell
+    puts '[Crossbell] new toot valid, sending to webhook'
+
+    # Send to crossbell by webhook
+    request = Request.new(:post, ENV['CROSSBELL_WEBHOOK'], body: Oj.dump(ActiveModelSerializers::SerializableResource.new(@status, serializer: REST::StatusSerializer, scope: nil, scope_name: :current_user, source_requested: true).as_json))
+
+    request.add_headers(
+      'Content-Type' => 'application/json',
+    )
+
+    request.perform do |response|
+      # raise Mastodon::UnexpectedResponseError, response unless response_successful?(response) || response_error_unsalvageable?(response)
     end
   end
 end

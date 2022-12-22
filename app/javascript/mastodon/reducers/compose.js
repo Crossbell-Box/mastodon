@@ -30,6 +30,7 @@ import {
   COMPOSE_SPOILER_TEXT_CHANGE,
   COMPOSE_VISIBILITY_CHANGE,
   COMPOSE_LANGUAGE_CHANGE,
+  COMPOSE_CROSSBELL_CHANGE,
   COMPOSE_COMPOSING_CHANGE,
   COMPOSE_EMOJI_INSERT,
   COMPOSE_UPLOAD_CHANGE_REQUEST,
@@ -61,6 +62,7 @@ const initialState = ImmutableMap({
   spoiler: false,
   spoiler_text: '',
   privacy: null,
+  crossbell: false,
   id: null,
   text: '',
   focusDate: null,
@@ -313,6 +315,11 @@ export default function compose(state = initialState, action) {
     return state
       .set('privacy', action.value)
       .set('idempotencyKey', uuid());
+  case COMPOSE_CROSSBELL_CHANGE:
+    return state.withMutations(map => {
+      map.set('crossbell', !state.get('crossbell'));
+      map.set('idempotencyKey', uuid());
+    });
   case COMPOSE_CHANGE:
     return state
       .set('text', action.text)
